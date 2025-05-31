@@ -258,6 +258,19 @@ bool check_onboarding_file() {
     return false;
 }
 
+bool check_cluely_protocol_registry() {
+    std::wcout << L"performing cluely protocol registry check..." << std::endl;
+    HKEY hkey;
+    LONG result = RegOpenKeyExW(HKEY_CLASSES_ROOT, L"cluely", 0, KEY_READ, &hkey);
+    if (result == ERROR_SUCCESS) {
+        RegCloseKey(hkey);
+        std::wcout << L"[registry check] detected 'cluely' protocol handler registration." << std::endl;
+        return true;
+    }
+    std::wcout << L"'cluely' protocol handler not registered." << std::endl;
+    return false;
+}
+
 void list_processes_basic() {
     PROCESSENTRY32W entry;
     entry.dwSize = sizeof(PROCESSENTRY32W);
@@ -289,7 +302,7 @@ void list_processes_basic() {
 }
 
 int main() {
-    std::wcout << L"hello, clueless! (now with onboarding file check)" << std::endl;
+    std::wcout << L"hello, clueless! (now with registry check)" << std::endl;
     
     std::wcout << L"performing specific process name check for 'notepad.exe' (example)..." << std::endl;
     ProcessInfo notepad_info = check_specific_process(L"notepad.exe");
@@ -331,6 +344,15 @@ int main() {
         std::wcout << L"onboarding.done file detected." << std::endl;
     } else {
         std::wcout << L"onboarding.done file not detected by check." << std::endl;
+    }
+
+    std::wcout << L"onboarding file check complete." << std::endl << std::endl;
+
+    bool protocol_registered = check_cluely_protocol_registry();
+    if (protocol_registered) {
+        std::wcout << L"'cluely://' protocol handler detected in registry." << std::endl;
+    } else {
+        std::wcout << L"'cluely://' protocol handler not detected in registry." << std::endl;
     }
 
     std::wcout << L"all checks complete." << std::endl;
