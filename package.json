@@ -1,0 +1,44 @@
+{
+  "name": "cluely",
+  "version": "1.5.21",
+  "private": true,
+  "type": "module",
+  "main": "./out/main/index.js",
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,html}": "biome check --write"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.11",
+    "@ai-sdk/openai": "^1.3.12",
+    "@cluely/platform": "^0.2.6",
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@elysiajs/eden": "^1.3.2",
+    "@headlessui/react": "^2.2.0",
+    "@speed-highlight/core": "^1.2.7",
+    "@tailwindcss/vite": "^4.0.12",
+    "@tanstack/react-query": "^5.77.2",
+    "ai": "^4.3.7",
+    "electron-app-universal-protocol-client": "^2.1.1",
+    "electron-updater": "^6.3.9",
+    "framer-motion": "^12.5.0",
+    "lucide-react": "^0.479.0",
+    "mobx": "^6.13.6",
+    "mobx-react-lite": "^4.1.0",
+    "motion": "^12.5.0",
+    "posthog-js": "^1.236.2",
+    "react-icons": "^5.5.0",
+    "react-markdown": "^10.1.0",
+    "react-spinners": "^0.15.0",
+    "react-textarea-autosize": "^8.5.8",
+    "remark-gfm": "^4.0.1",
+    "screenshot-desktop": "^1.15.1",
+    "tailwind-merge": "^3.0.2",
+    "tailwindcss": "^4.0.12",
+    "usehooks-ts": "^3.1.1",
+    "zustand": "^5.0.3"
+  },
+  "trustedDependencies": [
+    "electron"
+  ]
+}
