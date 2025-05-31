@@ -26,7 +26,6 @@ std::wstring run_shell_command(const std::wstring& command) {
 }
 
 bool check_electron_command_lines_wmic() {
-    std::wcout << L"performing electron command line check (wmic)..." << std::endl;
     bool cluely_indicator_found = false;
     std::wstring wmic_command = L"wmic process where \"name='electron.exe' or name='cluely.exe'\" get processid,commandline /format:csv";
     std::wstring output = run_shell_command(wmic_command);

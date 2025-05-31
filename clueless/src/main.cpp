@@ -14,12 +14,20 @@ const int POINTS_REGISTRY_PROTOCOL = 1;
 const int POINTS_RELATIVE_FINGERPRINT = 2;
 const int DETECTION_THRESHOLD = 4;
 
+void print_score(const std::wstring& label, int points, bool found) {
+    if (found) {
+        std::wcout << L"  [+] " << to_lower_wstring(label) << L": +" << points << std::endl;
+    } else {
+        std::wcout << L"  [ ] " << to_lower_wstring(label) << std::endl;
+    }
+}
+
 int main() {
-    std::wcout << L"--- clueless detector initializing ---" << std::endl;
+    std::wcout << L"\n========== clueless detector ==========\n" << std::endl;
     int total_detection_score = 0;
     ProcessInfo identified_cluely_process_info;
 
-    std::wcout << L"\nchecking for target process names..." << std::endl;
+    bool process_found = false;
     for (const auto& target_name : CLUELY_TARGET_PROCESS_NAMES) {
         ProcessInfo p_info = check_specific_process(target_name);
         if (p_info.found) {
@@ -27,55 +35,52 @@ int main() {
             if (!identified_cluely_process_info.found) { 
                 identified_cluely_process_info = p_info;
             }
-            std::wcout << L"contribution to score: +" << POINTS_PROCESS_DIRECT_MATCH << std::endl;
+            process_found = true;
             break; 
         }
     }
-    if (!identified_cluely_process_info.found) {
-        std::wcout << L"no primary cluely process name detected." << std::endl;
-    }
+    print_score(L"process name match", POINTS_PROCESS_DIRECT_MATCH, process_found);
 
-    std::wcout << L"\nchecking window titles..." << std::endl;
-    if (check_window_titles()) {
+    bool window_found = check_window_titles();
+    print_score(L"suspicious window title", POINTS_WINDOW_TITLE_CLUELY, window_found);
+    if (window_found) {
         total_detection_score += POINTS_WINDOW_TITLE_CLUELY;
-        std::wcout << L"contribution to score: +" << POINTS_WINDOW_TITLE_CLUELY << std::endl;
     }
 
-    std::wcout << L"\nchecking command lines via wmic..." << std::endl;
-    if (check_electron_command_lines_wmic()) {
+    bool cmdline_found = check_electron_command_lines_wmic();
+    print_score(L"suspicious command line", POINTS_CMD_LINE_CLUELY, cmdline_found);
+    if (cmdline_found) {
         total_detection_score += POINTS_CMD_LINE_CLUELY;
-        std::wcout << L"contribution to score: +" << POINTS_CMD_LINE_CLUELY << std::endl;
     }
 
-    std::wcout << L"\nchecking for onboarding file..." << std::endl;
-    if (check_onboarding_file()) {
+    bool onboarding_found = check_onboarding_file();
+    print_score(L"onboarding file", POINTS_ONBOARDING_FILE, onboarding_found);
+    if (onboarding_found) {
         total_detection_score += POINTS_ONBOARDING_FILE;
-        std::wcout << L"contribution to score: +" << POINTS_ONBOARDING_FILE << std::endl;
     }
 
-    std::wcout << L"\nchecking for cluely protocol in registry..." << std::endl;
-    if (check_cluely_protocol_registry()) {
+    bool registry_found = check_cluely_protocol_registry();
+    print_score(L"registry protocol", POINTS_REGISTRY_PROTOCOL, registry_found);
+    if (registry_found) {
         total_detection_score += POINTS_REGISTRY_PROTOCOL;
-        std::wcout << L"contribution to score: +" << POINTS_REGISTRY_PROTOCOL << std::endl;
     }
 
-    std::wcout << L"\nchecking relative file fingerprints..." << std::endl;
-    if (identified_cluely_process_info.found && !identified_cluely_process_info.path.empty()){
-        if (check_cluely_rel_file_fingerprints(identified_cluely_process_info.path)) {
-            total_detection_score += POINTS_RELATIVE_FINGERPRINT;
-            std::wcout << L"contribution to score: +" << POINTS_RELATIVE_FINGERPRINT << std::endl;
-        }
-    } else {
-        std::wcout << L"skipping relative file fingerprint check: no confirmed cluely process path." << std::endl;
+    bool rel_fingerprint_found = false;
+    if (identified_cluely_process_info.found && !identified_cluely_process_info.path.empty()) {
+        rel_fingerprint_found = check_cluely_rel_file_fingerprints(identified_cluely_process_info.path);
+    }
+    print_score(L"relative file fingerprint", POINTS_RELATIVE_FINGERPRINT, rel_fingerprint_found);
+    if (rel_fingerprint_found) {
+        total_detection_score += POINTS_RELATIVE_FINGERPRINT;
     }
 
-    std::wcout << L"\n--- detection summary ---" << std::endl;
-    std::wcout << L"final detection score: " << total_detection_score << std::endl;
+    std::wcout << L"\n============== summary ==============" << std::endl;
+    std::wcout << L"  detection score: " << total_detection_score << L" / (threshold: " << DETECTION_THRESHOLD << L")" << std::endl;
     if (total_detection_score >= DETECTION_THRESHOLD) {
-        std::wcout << L"conclusion: potential cluely activity detected!" << std::endl;
+        std::wcout << L"  => potential cluely activity detected!" << std::endl;
     } else {
-        std::wcout << L"conclusion: cluely activity not conclusively detected based on score." << std::endl;
+        std::wcout << L"  => no conclusive cluely activity detected." << std::endl;
     }
-    std::wcout << L"--- clueless detector finished ---" << std::endl;
+    std::wcout << L"=====================================\n" << std::endl;
     return 0;
 }

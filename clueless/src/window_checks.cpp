@@ -42,7 +42,6 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 }
 
 bool check_window_titles() {
-    std::wcout << L"performing window title check..." << std::endl;
     EnumWindowsCallbackArgs callback_args;
     callback_args.target_window_titles_lower = &TARGET_WINDOW_TITLES_LOWER;
     callback_args.cluely_indicator_found = false;
