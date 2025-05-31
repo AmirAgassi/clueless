@@ -8,7 +8,7 @@ const std::vector<std::wstring> CLUELY_REL_FILE_FINGERPRINTS = {
 bool check_onboarding_file() {
     std::wcout << L"performing onboarding file check..." << std::endl;
     wchar_t path_raw[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, path_raw))) {
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, path_raw))) {
         std::wstring full_path = std::wstring(path_raw) + L"\\cluely\\onboarding.done";
         DWORD file_attributes = GetFileAttributesW(full_path.c_str());
         if (file_attributes != INVALID_FILE_ATTRIBUTES && !(file_attributes & FILE_ATTRIBUTE_DIRECTORY)) {
