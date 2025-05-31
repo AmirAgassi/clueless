@@ -301,7 +301,6 @@ int main() {
     
     std::wstring last_known_process_path_for_fingerprint_check = L"";
 
-    std::wcout << L"performing specific process name check for 'notepad.exe' (example)..." << std::endl;
     ProcessInfo notepad_info = check_specific_process(L"notepad.exe");
     if (notepad_info.found) {
         std::wcout << L"'notepad.exe' found by specific check." << std::endl;
@@ -309,7 +308,7 @@ int main() {
     } else {
         std::wcout << L"'notepad.exe' not found by specific check." << std::endl;
     }
-    std::wcout << L"performing specific process name check for 'explorer.exe' (example)..." << std::endl;
+
     ProcessInfo explorer_info = check_specific_process(L"explorer.exe");
     if (explorer_info.found) {
         std::wcout << L"'explorer.exe' found by specific check." << std::endl;
@@ -319,35 +318,34 @@ int main() {
     } else {
         std::wcout << L"'explorer.exe' not found by specific check." << std::endl;
     }
-    std::wcout << L"specific process check complete." << std::endl << std::endl;
+
     bool suspicious_titles_found = check_window_titles();
     if (suspicious_titles_found) {
         std::wcout << L"suspicious window title(s) detected." << std::endl;
     } else {
         std::wcout << L"no suspicious window titles detected by dedicated check." << std::endl;
     }
-    std::wcout << L"window title check complete." << std::endl << std::endl;
+
     bool suspicious_cmdline_found = check_electron_command_lines_wmic();
     if (suspicious_cmdline_found) {
         std::wcout << L"suspicious command line(s) detected via wmic." << std::endl;
     } else {
         std::wcout << L"no suspicious command lines detected by wmic check." << std::endl;
     }
-    std::wcout << L"wmic command line check complete." << std::endl << std::endl;
+
     bool onboarding_file_found = check_onboarding_file();
     if (onboarding_file_found) {
         std::wcout << L"onboarding.done file detected." << std::endl;
     } else {
         std::wcout << L"onboarding.done file not detected by check." << std::endl;
     }
-    std::wcout << L"onboarding file check complete." << std::endl << std::endl;
+
     bool protocol_registered = check_cluely_protocol_registry();
     if (protocol_registered) {
         std::wcout << L"'cluely://' protocol handler detected in registry." << std::endl;
     } else {
         std::wcout << L"'cluely://' protocol handler not detected in registry." << std::endl;
     }
-    std::wcout << L"registry check complete." << std::endl << std::endl;
 
     if (!last_known_process_path_for_fingerprint_check.empty()){
         bool rel_files_found = check_cluely_rel_file_fingerprints(last_known_process_path_for_fingerprint_check);
