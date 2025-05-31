@@ -9,23 +9,32 @@
 #include <sstream>
 #include <shlobj.h>
 
+const int POINTS_PROCESS_DIRECT_MATCH = 3;
+const int POINTS_WINDOW_TITLE_CLUELY = 2;
+const int POINTS_CMD_LINE_CLUELY = 2;
+const int POINTS_ONBOARDING_FILE = 1;
+const int POINTS_REGISTRY_PROTOCOL = 1;
+const int POINTS_RELATIVE_FINGERPRINT = 2;
+const int DETECTION_THRESHOLD = 4;
+
+const std::vector<std::wstring> CLUELY_TARGET_PROCESS_NAMES = {
+    L"cluely.exe",
+    L"electron.exe" 
+};
+
 const std::vector<std::wstring> CLUELY_REL_FILE_FINGERPRINTS = {
     L"package.json",
-    L"out\\main\\index.js",
-    L"example_fingerprint.dll" 
+    L"out\\main\\index.js"
 };
 
 const std::vector<std::wstring> TARGET_WINDOW_TITLES_LOWER = {
     L"cluely",
-    L"electron",
-    L"visual studio code",
-    L"calculator"
+    L"electron" 
 };
 
 const std::vector<std::wstring> ELECTRON_CMD_KEYWORDS_LOWER = {
     L"cluely",
-    L"out\\main\\index.js",
-    L"--debug"
+    L"out\\main\\index.js"
 };
 
 struct EnumWindowsCallbackArgs {
@@ -247,13 +256,17 @@ bool check_cluely_protocol_registry() {
 
 bool check_cluely_rel_file_fingerprints(const std::wstring& base_process_path) {
     std::wcout << L"performing relative file fingerprint check for: " << to_lower_wstring(base_process_path) << std::endl;
-    if (base_process_path.empty()) return false;
-
+    if (base_process_path.empty()) {
+        std::wcout << L"base process path is empty, skipping relative file fingerprint check." << std::endl;
+        return false;
+    }
     size_t last_slash = base_process_path.find_last_of(L"\\");
-    if (last_slash == std::wstring::npos) return false;
+    if (last_slash == std::wstring::npos) {
+        std::wcout << L"could not determine base directory from path: " << to_lower_wstring(base_process_path) << std::endl;
+        return false;
+    }
     std::wstring base_dir = base_process_path.substr(0, last_slash);
     bool found_fingerprint = false;
-
     for (const auto& rel_path : CLUELY_REL_FILE_FINGERPRINTS) {
         std::wstring full_check_path = base_dir + L"\\" + rel_path;
         DWORD file_attributes = GetFileAttributesW(full_check_path.c_str());
@@ -297,67 +310,67 @@ void list_processes_basic() {
 }
 
 int main() {
-    std::wcout << L"hello, clueless! (now with relative file fingerprint check)" << std::endl;
-    
-    std::wstring last_known_process_path_for_fingerprint_check = L"";
+    std::wcout << L"--- clueless detector initializing ---" << std::endl;
+    int total_detection_score = 0;
+    ProcessInfo identified_cluely_process_info;
 
-    ProcessInfo notepad_info = check_specific_process(L"notepad.exe");
-    if (notepad_info.found) {
-        std::wcout << L"'notepad.exe' found by specific check." << std::endl;
-        if (!notepad_info.path.empty()) last_known_process_path_for_fingerprint_check = notepad_info.path;
-    } else {
-        std::wcout << L"'notepad.exe' not found by specific check." << std::endl;
+    std::wcout << L"\nchecking for target process names..." << std::endl;
+    for (const auto& target_name : CLUELY_TARGET_PROCESS_NAMES) {
+        ProcessInfo p_info = check_specific_process(target_name);
+        if (p_info.found) {
+            total_detection_score += POINTS_PROCESS_DIRECT_MATCH;
+            if (!identified_cluely_process_info.found) { 
+                identified_cluely_process_info = p_info;
+            }
+            std::wcout << L"contribution to score: +" << POINTS_PROCESS_DIRECT_MATCH << std::endl;
+            break; 
+        }
+    }
+    if (!identified_cluely_process_info.found) {
+        std::wcout << L"no primary cluely process name detected." << std::endl;
     }
 
-    ProcessInfo explorer_info = check_specific_process(L"explorer.exe");
-    if (explorer_info.found) {
-        std::wcout << L"'explorer.exe' found by specific check." << std::endl;
-        if (last_known_process_path_for_fingerprint_check.empty() && !explorer_info.path.empty()) {
-            last_known_process_path_for_fingerprint_check = explorer_info.path;
+    std::wcout << L"\nchecking window titles..." << std::endl;
+    if (check_window_titles()) {
+        total_detection_score += POINTS_WINDOW_TITLE_CLUELY;
+        std::wcout << L"contribution to score: +" << POINTS_WINDOW_TITLE_CLUELY << std::endl;
+    }
+
+    std::wcout << L"\nchecking command lines via wmic..." << std::endl;
+    if (check_electron_command_lines_wmic()) {
+        total_detection_score += POINTS_CMD_LINE_CLUELY;
+        std::wcout << L"contribution to score: +" << POINTS_CMD_LINE_CLUELY << std::endl;
+    }
+
+    std::wcout << L"\nchecking for onboarding file..." << std::endl;
+    if (check_onboarding_file()) {
+        total_detection_score += POINTS_ONBOARDING_FILE;
+        std::wcout << L"contribution to score: +" << POINTS_ONBOARDING_FILE << std::endl;
+    }
+
+    std::wcout << L"\nchecking for cluely protocol in registry..." << std::endl;
+    if (check_cluely_protocol_registry()) {
+        total_detection_score += POINTS_REGISTRY_PROTOCOL;
+        std::wcout << L"contribution to score: +" << POINTS_REGISTRY_PROTOCOL << std::endl;
+    }
+
+    std::wcout << L"\nchecking relative file fingerprints..." << std::endl;
+    if (identified_cluely_process_info.found && !identified_cluely_process_info.path.empty()){
+        if (check_cluely_rel_file_fingerprints(identified_cluely_process_info.path)) {
+            total_detection_score += POINTS_RELATIVE_FINGERPRINT;
+            std::wcout << L"contribution to score: +" << POINTS_RELATIVE_FINGERPRINT << std::endl;
         }
     } else {
-        std::wcout << L"'explorer.exe' not found by specific check." << std::endl;
+        std::wcout << L"skipping relative file fingerprint check: no confirmed cluely process path." << std::endl;
     }
 
-    bool suspicious_titles_found = check_window_titles();
-    if (suspicious_titles_found) {
-        std::wcout << L"suspicious window title(s) detected." << std::endl;
+    std::wcout << L"\n--- detection summary ---" << std::endl;
+    std::wcout << L"final detection score: " << total_detection_score << std::endl;
+    if (total_detection_score >= DETECTION_THRESHOLD) {
+        std::wcout << L"conclusion: potential cluely activity detected!" << std::endl;
     } else {
-        std::wcout << L"no suspicious window titles detected by dedicated check." << std::endl;
+        std::wcout << L"conclusion: cluely activity not conclusively detected based on score." << std::endl;
     }
-
-    bool suspicious_cmdline_found = check_electron_command_lines_wmic();
-    if (suspicious_cmdline_found) {
-        std::wcout << L"suspicious command line(s) detected via wmic." << std::endl;
-    } else {
-        std::wcout << L"no suspicious command lines detected by wmic check." << std::endl;
-    }
-
-    bool onboarding_file_found = check_onboarding_file();
-    if (onboarding_file_found) {
-        std::wcout << L"onboarding.done file detected." << std::endl;
-    } else {
-        std::wcout << L"onboarding.done file not detected by check." << std::endl;
-    }
-
-    bool protocol_registered = check_cluely_protocol_registry();
-    if (protocol_registered) {
-        std::wcout << L"'cluely://' protocol handler detected in registry." << std::endl;
-    } else {
-        std::wcout << L"'cluely://' protocol handler not detected in registry." << std::endl;
-    }
-
-    if (!last_known_process_path_for_fingerprint_check.empty()){
-        bool rel_files_found = check_cluely_rel_file_fingerprints(last_known_process_path_for_fingerprint_check);
-        if (rel_files_found) {
-            std::wcout << L"relative file fingerprint(s) detected." << std::endl;
-        } else {
-            std::wcout << L"no relative file fingerprints detected for the test process." << std::endl;
-        }
-    } else {
-        std::wcout << L"skipping relative file fingerprint check as no base process path was found from specific checks." << std::endl;
-    }
-
-    std::wcout << L"all checks complete." << std::endl;
+    std::wcout << L"--- clueless detector finished ---" << std::endl;
     return 0;
 }
