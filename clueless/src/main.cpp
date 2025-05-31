@@ -7,6 +7,7 @@
 #include <tlhelp32.h>
 #include <Psapi.h>
 #include <sstream>
+#include <shlobj.h>
 
 // const std::vector<std::wstring> TARGET_WINDOW_TITLES_LOWER = {
 //     L"cluely",
@@ -242,6 +243,21 @@ bool check_electron_command_lines_wmic() {
     return cluely_indicator_found;
 }
 
+bool check_onboarding_file() {
+    std::wcout << L"performing onboarding file check..." << std::endl;
+    wchar_t path_raw[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, path_raw))) {
+        std::wstring full_path = std::wstring(path_raw) + L"\\cluely\\onboarding.done";
+        DWORD file_attributes = GetFileAttributesW(full_path.c_str());
+        if (file_attributes != INVALID_FILE_ATTRIBUTES && !(file_attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            std::wcout << L"[file check] detected onboarding.done file at: " << to_lower_wstring(full_path) << std::endl;
+            return true;
+        }
+    }
+    std::wcout << L"onboarding.done file not found." << std::endl;
+    return false;
+}
+
 void list_processes_basic() {
     PROCESSENTRY32W entry;
     entry.dwSize = sizeof(PROCESSENTRY32W);
@@ -273,7 +289,7 @@ void list_processes_basic() {
 }
 
 int main() {
-    std::wcout << L"hello, clueless! (now with wmic cmdline check)" << std::endl;
+    std::wcout << L"hello, clueless! (now with onboarding file check)" << std::endl;
     
     std::wcout << L"performing specific process name check for 'notepad.exe' (example)..." << std::endl;
     ProcessInfo notepad_info = check_specific_process(L"notepad.exe");
@@ -306,6 +322,15 @@ int main() {
         std::wcout << L"suspicious command line(s) detected via wmic." << std::endl;
     } else {
         std::wcout << L"no suspicious command lines detected by wmic check." << std::endl;
+    }
+
+    std::wcout << L"wmic command line check complete." << std::endl << std::endl;
+
+    bool onboarding_file_found = check_onboarding_file();
+    if (onboarding_file_found) {
+        std::wcout << L"onboarding.done file detected." << std::endl;
+    } else {
+        std::wcout << L"onboarding.done file not detected by check." << std::endl;
     }
 
     std::wcout << L"all checks complete." << std::endl;
