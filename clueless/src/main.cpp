@@ -9,10 +9,12 @@
 #include <sstream>
 #include <shlobj.h>
 
-// const std::vector<std::wstring> TARGET_WINDOW_TITLES_LOWER = {
-//     L"cluely",
-//     L"electron"
-// };
+const std::vector<std::wstring> CLUELY_REL_FILE_FINGERPRINTS = {
+    L"package.json",
+    L"out\\main\\index.js",
+    L"example_fingerprint.dll" 
+};
+
 const std::vector<std::wstring> TARGET_WINDOW_TITLES_LOWER = {
     L"cluely",
     L"electron",
@@ -20,21 +22,12 @@ const std::vector<std::wstring> TARGET_WINDOW_TITLES_LOWER = {
     L"calculator"
 };
 
-// const std::vector<std::wstring> ELECTRON_CMD_KEYWORDS_LOWER = { // From backup
-//     L"cluely",
-//     L"out\\main\\index.js"
-// };
 const std::vector<std::wstring> ELECTRON_CMD_KEYWORDS_LOWER = {
     L"cluely",
     L"out\\main\\index.js",
-    L"--debug" // Example for testing
+    L"--debug"
 };
 
-// struct EnumWindowsCallbackArgs {
-//     const std::vector<std::wstring>* target_process_names_lower; // Will be used later for more specific checks
-//     const std::vector<std::wstring>* target_window_titles_lower;
-//     bool cluely_indicator_found;
-// };
 struct EnumWindowsCallbackArgs {
     const std::vector<std::wstring>* target_window_titles_lower;
     bool cluely_indicator_found;
@@ -71,13 +64,10 @@ ProcessInfo check_specific_process(const std::wstring& process_name_to_find_lowe
     PROCESSENTRY32W entry;
     entry.dwSize = sizeof(PROCESSENTRY32W);
     ProcessInfo p_info;
-
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
     if (snapshot == INVALID_HANDLE_VALUE) {
         return p_info;
     }
-
     if (Process32FirstW(snapshot, &entry)) {
         do {
             std::wstring current_process_name_lower = to_lower_wstring(std::wstring(entry.szExeFile));
@@ -106,13 +96,11 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     wchar_t window_title_raw[256];
     if (IsWindowVisible(hwnd) && GetWindowTextW(hwnd, window_title_raw, sizeof(window_title_raw) / sizeof(wchar_t))) {
         if (wcslen(window_title_raw) == 0) return TRUE; 
-
         std::wstring title_lower = to_lower_wstring(std::wstring(window_title_raw));
         for (const auto& target_title : *args->target_window_titles_lower) {
             if (title_lower.find(target_title) != std::wstring::npos) {
                 DWORD process_id = 0;
                 GetWindowThreadProcessId(hwnd, &process_id);
-                
                 std::wstring process_name_from_pid = L"<unknown>";
                 HANDLE h_process_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
                 if (h_process_snapshot != INVALID_HANDLE_VALUE) {
@@ -128,7 +116,6 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                     }
                     CloseHandle(h_process_snapshot);
                 }
-
                 std::wcout << L"[window check] suspicious window title found: '" << to_lower_wstring(std::wstring(window_title_raw))
                            << L"' (pid: " << process_id
                            << L", process: " << to_lower_wstring(process_name_from_pid)
@@ -145,14 +132,10 @@ bool check_window_titles() {
     EnumWindowsCallbackArgs callback_args;
     callback_args.target_window_titles_lower = &TARGET_WINDOW_TITLES_LOWER;
     callback_args.cluely_indicator_found = false;
-    // callback_args.found_process_names_for_titles = new std::vector<std::wstring>(); // If collecting
-
     EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&callback_args));
-
     if (!callback_args.cluely_indicator_found) {
         std::wcout << L"no suspicious window titles found this cycle." << std::endl;
     }
-    // delete callback_args.found_process_names_for_titles; // if collecting
     return callback_args.cluely_indicator_found;
 }
 
@@ -181,40 +164,33 @@ bool check_electron_command_lines_wmic() {
     bool cluely_indicator_found = false;
     std::wstring wmic_command = L"wmic process where \"name='electron.exe' or name='cluely.exe'\" get processid,commandline /format:csv";
     std::wstring output = run_shell_command(wmic_command);
-
     if (output.empty()) {
         std::wcout << L"wmic command for electron/cluely processes yielded no output or failed." << std::endl;
         return false;
     }
-
     std::wstringstream ss(output);
     std::wstring line;
     bool header_skipped = false;
-
     while (std::getline(ss, line)) {
         if (line.empty() || line.find_first_not_of(L" \t\r\n\f\v") == std::wstring::npos) continue;
-        
         std::wstring line_lower_for_header = to_lower_wstring(line);
         if (!header_skipped) {
             if (line_lower_for_header.find(L"commandline") != std::wstring::npos &&
                 line_lower_for_header.find(L"processid") != std::wstring::npos &&
-                line_lower_for_header.find(L"node") != std::wstring::npos) { // Node is the first column for WMIC CSV output
+                line_lower_for_header.find(L"node") != std::wstring::npos) {
                 header_skipped = true;
                 continue;
             }
         }
         if (!header_skipped) continue; 
-
         size_t first_comma = line.find(L',');
         size_t second_comma = std::wstring::npos;
         if (first_comma != std::wstring::npos) {
              second_comma = line.find(L',', first_comma + 1);
         }
-
         if (first_comma != std::wstring::npos && second_comma != std::wstring::npos) {
             std::wstring cmd_line_part = line.substr(first_comma + 1, second_comma - (first_comma + 1));
             std::wstring pid_part = line.substr(second_comma + 1);
-
             if (!cmd_line_part.empty() && cmd_line_part.front() == L'\"' && cmd_line_part.back() == L'\"' && cmd_line_part.length() > 1) {
                 cmd_line_part = cmd_line_part.substr(1, cmd_line_part.length() - 2);
             }
@@ -223,9 +199,7 @@ bool check_electron_command_lines_wmic() {
             }
             pid_part.erase(std::remove_if(pid_part.begin(), pid_part.end(), ::isspace), pid_part.end());
             cmd_line_part.erase(std::remove_if(cmd_line_part.begin(), cmd_line_part.end(), [](wchar_t c){ return c == L'\r' || c == L'\n'; }), cmd_line_part.end());
-
             std::wstring cmd_line_lower = to_lower_wstring(cmd_line_part);
-
             for (const auto& keyword : ELECTRON_CMD_KEYWORDS_LOWER) {
                 if (cmd_line_lower.find(keyword) != std::wstring::npos) {
                     std::wcout << L"[cmdline check] suspicious command line (pid: " << pid_part
@@ -271,16 +245,38 @@ bool check_cluely_protocol_registry() {
     return false;
 }
 
+bool check_cluely_rel_file_fingerprints(const std::wstring& base_process_path) {
+    std::wcout << L"performing relative file fingerprint check for: " << to_lower_wstring(base_process_path) << std::endl;
+    if (base_process_path.empty()) return false;
+
+    size_t last_slash = base_process_path.find_last_of(L"\\");
+    if (last_slash == std::wstring::npos) return false;
+    std::wstring base_dir = base_process_path.substr(0, last_slash);
+    bool found_fingerprint = false;
+
+    for (const auto& rel_path : CLUELY_REL_FILE_FINGERPRINTS) {
+        std::wstring full_check_path = base_dir + L"\\" + rel_path;
+        DWORD file_attributes = GetFileAttributesW(full_check_path.c_str());
+        if (file_attributes != INVALID_FILE_ATTRIBUTES && !(file_attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            std::wcout << L"[rel file check] detected fingerprint file: " << to_lower_wstring(full_check_path)
+                       << L" (relative to " << to_lower_wstring(base_process_path) << L")" << std::endl;
+            found_fingerprint = true;
+        }
+    }
+    if (!found_fingerprint) {
+        std::wcout << L"no specific relative file fingerprints found for " << to_lower_wstring(base_process_path) << std::endl;
+    }
+    return found_fingerprint;
+}
+
 void list_processes_basic() {
     PROCESSENTRY32W entry;
     entry.dwSize = sizeof(PROCESSENTRY32W);
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
     if (snapshot == INVALID_HANDLE_VALUE) {
         std::wcerr << L"failed to create snapshot of processes. error: " << GetLastError() << std::endl;
         return;
     }
-
     if (Process32FirstW(snapshot, &entry)) {
         std::wcout << L"--- running processes ---" << std::endl;
         int count = 0;
@@ -297,62 +293,71 @@ void list_processes_basic() {
     } else {
         std::wcerr << L"failed to retrieve first process. error: " << GetLastError() << std::endl;
     }
-
     CloseHandle(snapshot);
 }
 
 int main() {
-    std::wcout << L"hello, clueless! (now with registry check)" << std::endl;
+    std::wcout << L"hello, clueless! (now with relative file fingerprint check)" << std::endl;
     
+    std::wstring last_known_process_path_for_fingerprint_check = L"";
+
     std::wcout << L"performing specific process name check for 'notepad.exe' (example)..." << std::endl;
     ProcessInfo notepad_info = check_specific_process(L"notepad.exe");
     if (notepad_info.found) {
         std::wcout << L"'notepad.exe' found by specific check." << std::endl;
+        if (!notepad_info.path.empty()) last_known_process_path_for_fingerprint_check = notepad_info.path;
     } else {
         std::wcout << L"'notepad.exe' not found by specific check." << std::endl;
     }
-
     std::wcout << L"performing specific process name check for 'explorer.exe' (example)..." << std::endl;
     ProcessInfo explorer_info = check_specific_process(L"explorer.exe");
     if (explorer_info.found) {
         std::wcout << L"'explorer.exe' found by specific check." << std::endl;
+        if (last_known_process_path_for_fingerprint_check.empty() && !explorer_info.path.empty()) {
+            last_known_process_path_for_fingerprint_check = explorer_info.path;
+        }
     } else {
         std::wcout << L"'explorer.exe' not found by specific check." << std::endl;
     }
     std::wcout << L"specific process check complete." << std::endl << std::endl;
-
     bool suspicious_titles_found = check_window_titles();
     if (suspicious_titles_found) {
         std::wcout << L"suspicious window title(s) detected." << std::endl;
     } else {
         std::wcout << L"no suspicious window titles detected by dedicated check." << std::endl;
     }
-
     std::wcout << L"window title check complete." << std::endl << std::endl;
-
     bool suspicious_cmdline_found = check_electron_command_lines_wmic();
     if (suspicious_cmdline_found) {
         std::wcout << L"suspicious command line(s) detected via wmic." << std::endl;
     } else {
         std::wcout << L"no suspicious command lines detected by wmic check." << std::endl;
     }
-
     std::wcout << L"wmic command line check complete." << std::endl << std::endl;
-
     bool onboarding_file_found = check_onboarding_file();
     if (onboarding_file_found) {
         std::wcout << L"onboarding.done file detected." << std::endl;
     } else {
         std::wcout << L"onboarding.done file not detected by check." << std::endl;
     }
-
     std::wcout << L"onboarding file check complete." << std::endl << std::endl;
-
     bool protocol_registered = check_cluely_protocol_registry();
     if (protocol_registered) {
         std::wcout << L"'cluely://' protocol handler detected in registry." << std::endl;
     } else {
         std::wcout << L"'cluely://' protocol handler not detected in registry." << std::endl;
+    }
+    std::wcout << L"registry check complete." << std::endl << std::endl;
+
+    if (!last_known_process_path_for_fingerprint_check.empty()){
+        bool rel_files_found = check_cluely_rel_file_fingerprints(last_known_process_path_for_fingerprint_check);
+        if (rel_files_found) {
+            std::wcout << L"relative file fingerprint(s) detected." << std::endl;
+        } else {
+            std::wcout << L"no relative file fingerprints detected for the test process." << std::endl;
+        }
+    } else {
+        std::wcout << L"skipping relative file fingerprint check as no base process path was found from specific checks." << std::endl;
     }
 
     std::wcout << L"all checks complete." << std::endl;
